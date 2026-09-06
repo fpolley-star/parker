@@ -1,1 +1,14 @@
+# Supabase local dev
+supabase/.branches
+supabase/.temp
 
+# Environment / secrets — never commit these
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+
+# Node (if any tooling gets added later)
+node_modules/
