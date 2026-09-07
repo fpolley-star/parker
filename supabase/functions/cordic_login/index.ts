@@ -95,7 +95,73 @@ Deno.serve(async (req) => {
     }
     console.log("cordic authentication successful: ", result); 
 
-    return new Response(JSON.stringify({ ok: true, result: result.jwt }), {
+
+    // BOOKING CAPABILITES
+    const bc_body = {
+      accUserID: 0,
+      bookingCapabilities: true,
+      userGroups: false,
+      permissions: false
+    }
+
+    const cordic_bc_response = await fetch("https://www.parkercorporate.co.uk/UserMgmt/Consumer?getuserdetails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${result.jwt}`
+      },
+      body: JSON.stringify(bc_body),
+    });
+
+    const bc_result = await cordic_bc_response.json();
+
+    if (bc_result.errorCode) {
+      console.log("cordic booking capabilities request failed: ", cordic_bc_response.error);
+      return new Response(JSON.stringify({ error: "Failed to retrieve booking capabilities" }), {
+
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+  
+    const bc_token = bc_result?.bookingCapabilities;
+    console.log("Booking Capabilities JWT: ", bc_token);
+
+
+
+    // PAYMENT DETAILS
+    const pd_body = { verbVersion: "1.0" }
+
+    const cordic_pd_response = await fetch("https://www.parkercorporate.co.uk/smartserver/SmartSrvISAPI.dll?paymentdetails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${result.jwt}`
+      },
+      body: JSON.stringify(pd_body),
+    });
+
+
+    const pd_result = await cordic_pd_response?.json();
+    console.log("Payment Details JWT: ", pd_result)
+
+    if (pd_result?.errorCode) {
+      console.log("cordic payment details request failed: ", cordic_pd_response.error);
+      return new Response(JSON.stringify({ error: "Failed to retrieve payment details" }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    
+    console.log("Payment Details: ", pd_result);
+
+
+
+    return new Response(JSON.stringify({ 
+      ok: true, 
+      token: result.jwt,
+      bookingCapabilities: bc_token,
+      paymentDetails: pd_result
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
