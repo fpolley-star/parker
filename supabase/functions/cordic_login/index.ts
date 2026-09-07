@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     const bc_result = await cordic_bc_response.json();
 
     if (bc_result.errorCode) {
-      console.log("cordic booking capabilities request failed: ", cordic_bc_response.error);
+      console.log("cordic booking capabilities request failed: ", cordic_bc_response);
       return new Response(JSON.stringify({ error: "Failed to retrieve booking capabilities" }), {
 
         headers: { "Content-Type": "application/json" },
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
     console.log("Payment Details JWT: ", pd_result)
 
     if (pd_result?.errorCode) {
-      console.log("cordic payment details request failed: ", cordic_pd_response.error);
+      console.log("cordic payment details request failed: ", cordic_pd_response);
       return new Response(JSON.stringify({ error: "Failed to retrieve payment details" }), {
         headers: { "Content-Type": "application/json" },
       });
