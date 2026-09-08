@@ -1,7 +1,4 @@
-// serverside cordic corporate login - takes a cordic_login id  ->  decrypts that logins password from 'vault', authenticates to cordic, and returns a fresh session token. the password never leaves the server
-
-// To add in codic userID login
-
+// serverside cordic corporate login - takes a cordic_login id  ->  decrypts that logins password from 'vault', authenticates to cordic, and returns a fresh session token.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -203,3 +200,7 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+/*
+curl -i -X POST "https://pszyyorcrbpdybquzsiy.supabase.co/functions/v1/cordic_login" -H "Content-Type: application/json" -d '{"cordic_login_id":"d15fdd8b-a320-4737-83cd-7ce328567db", "user_id":"11e781b0-7164-416d-81e8-a1e95431ce8d"}'
+*/
