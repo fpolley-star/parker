@@ -27,6 +27,23 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+   // Check if the user has access to this cordic_login
+    const {data: membership, error: membership_error} = await supabase
+    .from("cordic_memberships")
+    .select("*")
+    .eq("cordic_login_id", cordic_login_id)
+    .eq("user_id", user_id);
+
+    console.log("Membership check", {membership, membership_error});
+
+    if (membership_error || !membership || membership.length === 0) {
+      return new Response(JSON.stringify({ error: "User does not have access to this cordic_login" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Fetch the cordic_login & secret_id record
     const { data: cordic_login, error: cordic_login_error } = await supabase
       .from("cordic_logins")
       .select("*")
@@ -55,6 +72,8 @@ Deno.serve(async (req) => {
     const cordic_account_number = cordic_login.account_number;
     const cordic_password = decrypted_password
 
+    // Authenticate to Cordic
+
     const cordic_login_request_body = {
       "account": cordic_account_number,
       "identifier": cordic_identifier,
@@ -75,28 +94,35 @@ Deno.serve(async (req) => {
     if (result.errorCode === 16) {
       console.log("cordic authentication: invalid password"); 
       return new Response(JSON.stringify({ error: "Invalid Password" }), {
-        status: cordic_login_response.status,
+        status: 500,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (result.errorCode === 18) {
       console.log("cordic authentication: invalid username"); 
       return new Response(JSON.stringify({ error: "Invalid Username" }), {
-        status: cordic_login_response.status,
+        status: 500,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (result.errorCode === 11) {
       console.log("cordic authentication: invalid account number"); 
       return new Response(JSON.stringify({ error: "Invalid Account Number" }), {
-        status: cordic_login_response.status,
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (result.errorCode) {
+      console.log("cordic authentication: invalid credentials"); 
+      return new Response(JSON.stringify({ error: "Invalid credentials" }), {
+        status: 500,
         headers: { "Content-Type": "application/json" },
       });
     }
     console.log("cordic authentication successful: ", result); 
 
 
-    // BOOKING CAPABILITES
+    // GET BOOKING CAPABILITES
     const bc_body = {
       accUserID: 0,
       bookingCapabilities: true,
@@ -118,7 +144,7 @@ Deno.serve(async (req) => {
     if (bc_result.errorCode) {
       console.log("cordic booking capabilities request failed: ", cordic_bc_response);
       return new Response(JSON.stringify({ error: "Failed to retrieve booking capabilities" }), {
-
+        status: 502,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -129,7 +155,7 @@ Deno.serve(async (req) => {
 
 
 
-    // PAYMENT DETAILS
+    // GET PAYMENT DETAILS
     const pd_body = { verbVersion: "1.0" }
 
     const cordic_pd_response = await fetch("https://www.parkercorporate.co.uk/smartserver/SmartSrvISAPI.dll?paymentdetails", {
@@ -148,6 +174,7 @@ Deno.serve(async (req) => {
     if (pd_result?.errorCode) {
       console.log("cordic payment details request failed: ", cordic_pd_response);
       return new Response(JSON.stringify({ error: "Failed to retrieve payment details" }), {
+        status: 502,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -155,7 +182,7 @@ Deno.serve(async (req) => {
     console.log("Payment Details: ", pd_result);
 
 
-
+// Return the JWT and booking capabilities to the client
     return new Response(JSON.stringify({ 
       ok: true, 
       token: result.jwt,
