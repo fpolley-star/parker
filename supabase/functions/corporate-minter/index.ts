@@ -1,5 +1,8 @@
 // serverside cordic corporate login - takes a cordic_login id  ->  decrypts that logins password from 'vault', authenticates to cordic, and returns a fresh session token. the password never leaves the server
 
+// To add in codic userID login
+
+
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 Deno.serve(async (req) => {
