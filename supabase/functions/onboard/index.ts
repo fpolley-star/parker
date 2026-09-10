@@ -25,7 +25,7 @@ export default {
     console.log("___________________");
 
     if (!email || !password) {
-      console.log("failed creating membership row")
+      console.log("Email or password missing")
       return new Response(JSON.stringify({ error: "Email or password missing"}), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -76,7 +76,6 @@ export default {
     })
 
     const cLoginResponse = await loginToCordic?.json()
-    const token = cLoginResponse?.jwt;
 
     if (cLoginResponse.registerError === 9) {
       console.log("9 | Should sign up | User doesnt exist")
@@ -131,7 +130,11 @@ export default {
     console.log("Found User", foundUser)
 
 
+
+
+
     if (foundUser) {
+      let cLogins
       // heal -> update password auth -> update personal vault secret -> return ok
 
       // use the email and type personal to ot query cordic logins
@@ -142,13 +145,122 @@ export default {
       
       // return ok
 
+      let { data: updateUser, error: updateUser_error } = await supabaseAdmin.auth.admin.updateUserById( foundUser, { password: password })
+
+      if (updateUser_error) {
+          console.log("FAILED TO UPDATE USER PASSWORD")
+          return new Response(JSON.stringify({error: "FAILED TO UPDATE USER PASSWORD", details: updateUser_error }), {
+           status: 500,
+           headers: {"Content-Type": "application/json"}
+         })
+       }
+
+     let { data: queryCLogins, error: queryCLogins_error } = await supabaseAdmin
+        .from('cordic_logins')
+        .select()
+        .eq('username', email)
+        .eq('type', 'personal')
+        .maybeSingle()
+
+      if (queryCLogins_error) {
+          console.log("FAILED TO QUERY USER LOGINS")
+          return new Response(JSON.stringify({error: "FAILED TO QUERY USER LOGINS ROW", details: queryCLogins_error }), {
+           status: 500,
+           headers: {"Content-Type": "application/json"}
+         })
+       }
+
+       if (queryCLogins) {
+        // most cases | match found - > update vault
+          let {data: updatePassword , error: updatePassword_error} = await supabaseAdmin.rpc('update_vault_secret', { p_secret_id: queryCLogins.secret_id, p_new_secret: password})
+
+          if (updatePassword_error) {
+            console.log("FAILED TO CREATE VAULT SECRET")
+            return new Response(JSON.stringify({error: "FAILED TO CREATE VAULT SECRET", details: updatePassword_error }), {
+              status: 500,
+              headers: {"Content-Type": "application/json"}
+            })
+          }
+
+          console.log('updated password: -> null ', updatePassword);
+
+
+        return new Response(JSON.stringify({ ok: true, details: 'user successfully synced' }), {
+          status: 200,
+          headers: {"Content-Type": "application/json"}
+        })
+
+       } else {
+        // Edge Cases | No match fofund -> create new
+          let {data: newSecretId , error: newSecretId_error} = await supabaseAdmin.rpc('create_vault_secret', {secret: password, name: `${date}-${email}`, description: ''})
+
+          console.log('newSecretId: ', newSecretId);
+
+          if (newSecretId_error) {
+            console.log("FAILED TO CREATE VAULT SECRET")
+            return new Response(JSON.stringify({error: "FAILED TO CREATE VAULT SECRET", details: newSecretId_error }), {
+              status: 500,
+              headers: {"Content-Type": "application/json"}
+            })
+          }
+
+          let { data: cLoginsInsert, error: cLoginsInsert_error } = await supabaseAdmin
+                .from('cordic_logins')
+                .insert({ account_number: null, username: email, secret_id: newSecretId, type: 'personal'  })
+                .select()
+                .single()
+
+            console.log('cordic login row: ', cLoginsInsert);
+
+            if (cLoginsInsert_error) {
+              console.log("FAILED TO CREATE USER LOGIN ROW")
+              return new Response(JSON.stringify({error: "FAILED TO ADD LOGIN ROW", details: cLoginsInsert_error }), {
+               status: 500,
+               headers: {"Content-Type": "application/json"}
+            })
+          }
+            cLogins = cLoginsInsert
+
+          
+      let { data: cMemberships, error: cMemberships_error } = await supabaseAdmin
+          .from('cordic_memberships')
+          .insert({ cordic_login_id: cLogins.id , user_id: foundUser })
+          .select()
+          .single()
+      
+      console.log('membership row: ', cMemberships);
+
+      if (cMemberships_error) {
+        console.log("FAILED TO CREATE MEMBERSHIP ROW")
+        return new Response(JSON.stringify({error: "FAILED TO CREATE MEMBERSHIP ROW", details: cMemberships_error }), {
+          status: 500,
+          headers: {"Content-Type": "application/json"}
+        })
+      }
+    
+      return new Response(JSON.stringify({ ok: true, details: 'user successfully updated' }), {
+        status: 200,
+        headers: {"Content-Type": "application/json"}
+      })
+
+       }
+
+
+
+
+
+
+
+
 
 
 
     } else {
       // migrate -> grab phone email and password from loginToCordic -> createUser → vault → insert the type='personal' cordic_logins row + the membership → ok
 
-      const { data: createUser, error: createUser_error } = await supabaseAdmin.auth.admin
+      let cLogins
+
+      let { data: createUser, error: createUser_error } = await supabaseAdmin.auth.admin
       .createUser({
         email: email,
         password: password,
@@ -165,7 +277,7 @@ export default {
         })
       };
 
-      const { data: createProfile, error: createProfile_error } = await supabaseAdmin
+      let { data: createProfile, error: createProfile_error } = await supabaseAdmin
         .from('profiles')
         .insert({
           id: createUser.user.id, 
@@ -183,7 +295,7 @@ export default {
         })
       }
 
-      const {data: queryCLogins ,error: queryCLogins_error } = await supabaseAdmin
+      let {data: queryCLogins ,error: queryCLogins_error } = await supabaseAdmin
         .from('cordic_logins')
         .select()
         .eq('username', email)
@@ -198,14 +310,11 @@ export default {
          })
        }
 
-        let cLogins
 
         if (queryCLogins) {
           // is not null, is truthy so update
 
-          const {data: updatePassword , error: updatePassword_error} = await supabaseAdmin.rpc('update_vault_secret', { p_secret_id: queryCLogins.secret_id, p_new_secret: password})
-
-          console.log('update password: ', updatePassword);
+          let {data: updatePassword , error: updatePassword_error} = await supabaseAdmin.rpc('update_vault_secret', { p_secret_id: queryCLogins.secret_id, p_new_secret: password})
 
           if (updatePassword_error) {
             console.log("FAILED TO CREATE VAULT SECRET")
@@ -215,12 +324,14 @@ export default {
             })
           }
 
+          console.log('updated password: -> null ', updatePassword);
+
           cLogins = queryCLogins
 
         } else {
           // is null so we insert
 
-          const {data: migratePassword , error: migratePassword_error} = await supabaseAdmin.rpc('create_vault_secret', {secret: password, name: `${date}-${email}`, description: ''})
+          let {data: migratePassword , error: migratePassword_error} = await supabaseAdmin.rpc('create_vault_secret', {secret: password, name: `${date}-${email}`, description: ''})
 
           console.log('migrate password: ', migratePassword);
 
@@ -232,7 +343,7 @@ export default {
             })
           }
 
-          const { data: cLoginsInsert, error: cLoginsInsert_error } = await supabaseAdmin
+          let { data: cLoginsInsert, error: cLoginsInsert_error } = await supabaseAdmin
                 .from('cordic_logins')
                 .insert({ account_number: null, username: email, secret_id: migratePassword, type: 'personal'  })
                 .select()
@@ -251,7 +362,7 @@ export default {
             cLogins = cLoginsInsert
         }
 
-      const { data: cMemberships, error: cMemberships_error } = await supabaseAdmin
+      let { data: cMemberships, error: cMemberships_error } = await supabaseAdmin
           .from('cordic_memberships')
           .insert({ cordic_login_id: cLogins.id , user_id: createUser.user.id })
           .select()
@@ -288,7 +399,7 @@ export default {
 */
 
 
-  return new Response(JSON.stringify({ ok: true }))
+  return new Response(JSON.stringify({ ok: true, Details: 'No Action' }))
     } catch (err) {
     return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: err.message }), {
       status: 500,
