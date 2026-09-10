@@ -134,6 +134,16 @@ export default {
     if (foundUser) {
       // heal -> update password auth -> update personal vault secret -> return ok
 
+      // use the email and type personal to ot query cordic logins
+      // if we find a match // take that secret id // update vault secret with logged in passowrd
+      // if no mathc // create a new vault password // insert a new cordic_login // insert a new cordic_membership row
+
+      // update auth.user with the new password
+      
+      // return ok
+
+
+
 
     } else {
       // migrate -> grab phone email and password from loginToCordic -> createUser → vault → insert the type='personal' cordic_logins row + the membership → ok
@@ -153,20 +163,7 @@ export default {
           status: 500,
           headers: {"Content-Type": "application/json"}
         })
-      }
-
-      const {data: migratePassword , error: migratePassword_error} = await supabaseAdmin.rpc('create_vault_secret', {secret: password, name: `${date}-${email}`, description: ''})
-
-      console.log('migrate password: ', migratePassword);
-
-      if (migratePassword_error) {
-        console.log("FAILED TO CREATE VAULT SECRET")
-        return new Response(JSON.stringify({error: "FAILED TO CREATE VAULT SECRET", details: migratePassword_error }), {
-          status: 500,
-          headers: {"Content-Type": "application/json"}
-        })
-      }
-
+      };
 
       const { data: createProfile, error: createProfile_error } = await supabaseAdmin
         .from('profiles')
@@ -186,22 +183,73 @@ export default {
         })
       }
 
+      const {data: queryCLogins ,error: queryCLogins_error } = await supabaseAdmin
+        .from('cordic_logins')
+        .select()
+        .eq('username', email)
+        .eq('type', 'personal')
+        .maybeSingle()
 
-      const { data: cLogins, error: cLogins_error } = await supabaseAdmin
-          .from('cordic_logins')
-          .insert({ account_number: null, username: email, secret_id: migratePassword, type: 'personal'  })
-          .select()
-          .single()
+      if (queryCLogins_error) {
+          console.log("FAILED TO QUERY USER LOGINS")
+          return new Response(JSON.stringify({error: "FAILED TO QUERY USER LOGINS ROW", details: queryCLogins_error }), {
+           status: 500,
+           headers: {"Content-Type": "application/json"}
+         })
+       }
 
-      console.log('cordic login row: ', cLogins);
+        let cLogins
 
-      if (cLogins_error) {
-        console.log("FAILED TO CREATE USER")
-        return new Response(JSON.stringify({error: "FAILED TO ADD LOGIN ROW", details: cLogins_error }), {
-          status: 500,
-          headers: {"Content-Type": "application/json"}
-        })
-      }
+        if (queryCLogins) {
+          // is not null, is truthy so update
+
+          const {data: updatePassword , error: updatePassword_error} = await supabaseAdmin.rpc('update_vault_secret', { p_secret_id: queryCLogins.secret_id, p_new_secret: password})
+
+          console.log('update password: ', updatePassword);
+
+          if (updatePassword_error) {
+            console.log("FAILED TO CREATE VAULT SECRET")
+            return new Response(JSON.stringify({error: "FAILED TO CREATE VAULT SECRET", details: updatePassword_error }), {
+              status: 500,
+              headers: {"Content-Type": "application/json"}
+            })
+          }
+
+          cLogins = queryCLogins
+
+        } else {
+          // is null so we insert
+
+          const {data: migratePassword , error: migratePassword_error} = await supabaseAdmin.rpc('create_vault_secret', {secret: password, name: `${date}-${email}`, description: ''})
+
+          console.log('migrate password: ', migratePassword);
+
+          if (migratePassword_error) {
+            console.log("FAILED TO CREATE VAULT SECRET")
+            return new Response(JSON.stringify({error: "FAILED TO CREATE VAULT SECRET", details: migratePassword_error }), {
+              status: 500,
+              headers: {"Content-Type": "application/json"}
+            })
+          }
+
+          const { data: cLoginsInsert, error: cLoginsInsert_error } = await supabaseAdmin
+                .from('cordic_logins')
+                .insert({ account_number: null, username: email, secret_id: migratePassword, type: 'personal'  })
+                .select()
+                .single()
+
+            console.log('cordic login row: ', cLoginsInsert);
+
+            if (cLoginsInsert_error) {
+              console.log("FAILED TO CREATE USER LOGIN ROW")
+              return new Response(JSON.stringify({error: "FAILED TO ADD LOGIN ROW", details: cLoginsInsert_error }), {
+               status: 500,
+               headers: {"Content-Type": "application/json"}
+            })
+          }
+
+            cLogins = cLoginsInsert
+        }
 
       const { data: cMemberships, error: cMemberships_error } = await supabaseAdmin
           .from('cordic_memberships')
