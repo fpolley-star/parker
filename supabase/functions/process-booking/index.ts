@@ -26,6 +26,9 @@ try {
   const p_cordic_login_id = record.cordic_login_id
   const payment = record.payment
 
+  // Account specific variables
+
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -40,6 +43,15 @@ try {
   const {data: personalMint, error: personalMint_error} = await supabase.functions.invoke('personal-minter', {
     body: {cordic_login_id: p_cordic_login_id, user_id: p_user_id},
   })
+
+  if (personalMint_error) {
+    consol.log("Unable to mint personal token: ", personalMint_error);
+    return new Response(JSON.stringify({ error: "Unable to mint token", details: err.personalMint_error }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } 
 
   const personalToken = await personalMint?.token
 
@@ -92,9 +104,12 @@ try {
 
   const cordicBookingResult = await cordicBooking?.json();
 
+  let booked;
+  let booked_error;
+
   if (cordicBookingResult.errorCode) {
 
-    const { data: booked, error: booked_error } = await supabase
+    let { data: booked, error: booked_error } = await supabase
     .from("bookings")
     .update({ 
       status: "failed", 
@@ -107,7 +122,7 @@ try {
      
   } else {
     
-    const { data: booked, error: booked_error } = await supabase
+    let { data: booked, error: booked_error } = await supabase
     .from("bookings")
     .update({ 
       status: "booked", 

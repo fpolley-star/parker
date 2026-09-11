@@ -102,9 +102,10 @@ export default {
     // IF queryData is empty -> brand nnew account 
   if (queryData.length === 0) {
     // store password
-    const { data: secretData, error: secretData_error } = await supabaseAdmin.rpc("create_vault_secret", { secret: payload?.password, name: `${payload.accountNo}-${payload.username}`, description: ''})
+    const { data: secretData, error: secretData_error } = await supabaseAdmin.rpc("create_vault_secret", { secret: payload?.password, name: `${Date.now()}-${payload.accountNo}-${payload.username}`, description: ''})
 
-    if (secretData_error && secretData_error.code ) {
+
+    if (secretData_error ) {
       console.log("failed storing users password: ", secretData_error)
     return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: secretData_error }), {
       status: 500,
@@ -134,7 +135,19 @@ export default {
     // connect the user into the account by establishing a memebrship row with the userrs id and the insertLogin row id
 
   } else { 
+    // FOUND ACCOUNT ROW: update self heal password
     cordic_login_id = queryData[0].id;
+    const {data: healPassword, error: healPassword_error} = await supabaseAdmin.rpc("update_vault_secret", { p_secret_id: queryData[0].secret_id, p_new_secret: payload?.password} )
+
+   if (healPassword_error) {
+    console.log("failed healing password: ", healPassword_error)
+    return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: healPassword_error }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    })}
+
+    console.log("Password Updated: ")
+    
   }
 
    // IF queryData isnt empty then we found an account
@@ -154,8 +167,11 @@ export default {
 
 
 
-
-  return Response.json({ user_id: ctx.userClaims?.id, queryDataResult: queryData })
+      console.log("success")
+      return new Response(JSON.stringify({ ok: true, msg: "Account Synced" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
     } catch (err) {
     return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: err.message }), {
       status: 500,
