@@ -14,7 +14,8 @@ export default {
     // authMode       — which auth mode matched
 
     // your business logic goes here
-
+    console.log('_________________________________');
+    console.log('_________________________________');
     const payload = await req.json();
 
     if (!payload.accountNo || !payload.username || !payload.password ) {
@@ -92,6 +93,8 @@ export default {
       headers: { "Content-Type": "application/json" },
     })}
 
+    console.log("Query Data: ",queryData.length , queryData)
+
 
   let cordic_login_id;
 
@@ -101,8 +104,8 @@ export default {
     // store password
     const { data: secretData, error: secretData_error } = await supabaseAdmin.rpc("create_vault_secret", { secret: payload?.password, name: `${payload.accountNo}-${payload.username}`, description: ''})
 
-    if (secretData_error) {
-      console.log("failed storing users password")
+    if (secretData_error && secretData_error.code ) {
+      console.log("failed storing users password: ", secretData_error)
     return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: secretData_error }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
