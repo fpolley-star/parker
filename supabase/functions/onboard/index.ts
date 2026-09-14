@@ -246,15 +246,6 @@ export default {
        }
 
 
-
-
-
-
-
-
-
-
-
     } else {
       // migrate -> grab phone email and password from loginToCordic -> createUser → vault → insert the type='personal' cordic_logins row + the membership → ok
 

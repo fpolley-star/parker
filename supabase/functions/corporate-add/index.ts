@@ -43,6 +43,14 @@ export default {
     });
 
     const loginResult = await cordic_login_response.json();
+    const display_name = loginResult.accountName;
+    const cordic_user_id = loginResult.accUserID;
+
+    console.log(payload.accountNo);
+    console.log(payload.username);
+
+
+
 
     if (loginResult.errorCode === 16) {
       console.log("cordic authentication: invalid password"); 
@@ -75,11 +83,59 @@ export default {
     console.log("cordic authentication successful: ", loginResult); 
 
 
+    // Query cordic_accounts table for this 'account_number'
+
+    const { data: accountsQuery, error: accountsQuery_error } = await supabaseAdmin
+    .from('cordic_accounts')
+    .select()
+    .eq("account_number", payload.accountNo)
+    .maybeSingle()
+
+    if (accountsQuery_error) {
+      console.log("cordic_accounts Query Failed", accountsQuery_error)
+    return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: accountsQuery_error }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    })}
+
+
+    let accountID
+
+    if (!accountsQuery) {
+      // no account create it with account number and references
+      // log id
+      const { data: insertAccount, error: insertAccount_error } = await supabaseAdmin
+        .from('cordic_accounts')
+        .insert({ 
+          account_number: payload?.accountNo, 
+          references: null, 
+          display_name: display_name,
+        })
+        .select()
+        .single()
+      
+    if (insertAccount_error) {
+      console.log("cordic_accounts Query Failed", insertAccount_error)
+    return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: insertAccount_error }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    })}
+
+    accountID = insertAccount.id;
+
+
+    } else {
+     // account exists
+     // grab id
+     // update references & display name if needed
+     accountID = accountsQuery.id
+
+
+
+    }
+
+
     // Query cordic_logins table for this 'account_number' + 'username' -> Sees if we have a secret (encrupted password) for this account user
-
-    console.log(payload.accountNo);
-    console.log(payload.username);
-
     const { data: queryData, error: queryData_error } = await supabaseAdmin
     .from('cordic_logins')
     .select()
@@ -87,7 +143,7 @@ export default {
     .eq("username", payload.username )
 
     if (queryData_error) {
-      console.log("cordic_logins Query Failed")
+      console.log("cordic_logins Query Failed", queryData_error)
     return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: queryData_error }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -116,7 +172,14 @@ export default {
     // insert the account details and secret id in cordic_logins table
     const { data: insertLogin, error: insertLogin_error } = await supabaseAdmin
     .from('cordic_logins')
-    .insert({ account_number: payload?.accountNo, username: payload?.username, secret_id: secretData, type: 'account' })
+    .insert({ 
+      account_number: payload?.accountNo, 
+      username: payload?.username, 
+      secret_id: secretData, 
+      account_id: accountID,
+      cordic_user_id: cordic_user_id,
+      type: 'account' 
+    })
     .select()
     .single()
 
@@ -135,6 +198,7 @@ export default {
     // connect the user into the account by establishing a memebrship row with the userrs id and the insertLogin row id
 
   } else { 
+
     // FOUND ACCOUNT ROW: update self heal password
     cordic_login_id = queryData[0].id;
     const {data: healPassword, error: healPassword_error} = await supabaseAdmin.rpc("update_vault_secret", { p_secret_id: queryData[0].secret_id, p_new_secret: payload?.password} )

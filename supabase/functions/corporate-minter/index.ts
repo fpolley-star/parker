@@ -1,8 +1,17 @@
 // serverside cordic corporate login - takes a cordic_login id  ->  decrypts that logins password from 'vault', authenticates to cordic, and returns a fresh session token.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { withSupabase } from 'npm:@supabase/server'
 
-Deno.serve(async (req) => {
+export default {
+  fetch: withSupabase({ auth: ['user', 'secret'] }, async (req, ctx) => {
+    const { supabase, supabaseAdmin, userClaims, jwtClaims, authMode } = ctx
+    // supabase       — RLS-scoped to the authenticated user
+    // supabaseAdmin  — bypasses RLS (service role)
+    // userClaims     — user identity from JWT (id, email, role)
+    // jwtClaims      — full JWT claims
+    // authMode       — which auth mode matched
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -11,9 +20,23 @@ Deno.serve(async (req) => {
   }
 
   try {
+    let effectiveUserId
     const payload = await req.json();
     const cordic_login_id = payload?.cordic_login_id;
-    const user_id = payload?.user_id;
+
+
+    if (ctx.authMode === 'user') {
+      // your business logic for user calls. ctx.supabase is scoped to them
+      effectiveUserId = ctx.userClaims.id
+      console.log("User Called")
+    };
+    if (ctx.authMode === 'secret') {
+      // your business logic for user calls. ctx.supabase is scoped to them
+      effectiveUserId = payload.user_id
+      console.log("Server Called")
+    }
+
+    const user_id = effectiveUserId;
 
     if (!user_id || !cordic_login_id) {
       return new Response(JSON.stringify({ error: "user_id and cordic_login_id are required" }), {
@@ -22,13 +45,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
    // Check if the user has access to this cordic_login
-    const {data: membership, error: membership_error} = await supabase
+    const {data: membership, error: membership_error} = await supabaseAdmin
     .from("cordic_memberships")
     .select("*")
     .eq("cordic_login_id", cordic_login_id)
@@ -44,7 +62,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch the cordic_login & secret_id record
-    const { data: cordic_login, error: cordic_login_error } = await supabase
+    const { data: cordic_login, error: cordic_login_error } = await supabaseAdmin
       .from("cordic_logins")
       .select("*")
       .eq("id", cordic_login_id)
@@ -58,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     // Decrypt the secret_id to get the password
-    const { data: decrypted_password, error: vault_error } = await supabase
+    const { data: decrypted_password, error: vault_error } = await supabaseAdmin
       .rpc("get_vault_secret", { secret_id: cordic_login.secret_id });
 
     if (vault_error || !decrypted_password) {
@@ -178,8 +196,22 @@ Deno.serve(async (req) => {
         headers: { "Content-Type": "application/json" },
       });
     }
+
+
+  if (cordic_login.account_id) {
+    const {data: updateReferences, error: updateReferences_error} = await supabaseAdmin
+    .from('cordic_accounts')
+    .update({references: pd_result})
+    .eq('id', cordic_login.account_id);
+
+    if (updateReferences_error) {
+    console.log("Update Error: ", updateReferences_error)
+   };
+  };
+
+
     
-    console.log("Payment Details: ", pd_result);
+   console.log("Payment Details: ", pd_result);
 
 
 // Return the JWT and booking capabilities to the client
@@ -199,7 +231,8 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   }
-});
+  }),
+}
 
 /*
 curl -i -X POST "https://pszyyorcrbpdybquzsiy.supabase.co/functions/v1/cordic_login" -H "Content-Type: application/json" -d '{"cordic_login_id":"d15fdd8b-a320-4737-83cd-7ce328567db", "user_id":"11e781b0-7164-416d-81e8-a1e95431ce8d"}'
