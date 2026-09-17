@@ -426,16 +426,6 @@ entrypoint = "./functions/process-booking/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/process-booking/*.html" ]
 
-[functions.account_login]
-enabled = true
-verify_jwt = false
-import_map = "./functions/account_login/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/account_login/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/account_login/*.html" ]
 
 [functions.personal-minter]
 enabled = true
@@ -469,3 +459,42 @@ entrypoint = "./functions/onboard/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/onboard/*.html" ]
+
+[functions.corporate-minter]
+enabled = true
+verify_jwt = false
+import_map = "./functions/corporate-minter/deno.json"
+entrypoint = "./functions/corporate-minter/index.ts"
+
+[functions.get-job-history]
+enabled = true
+verify_jwt = false
+import_map = "./functions/get-job-history/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/get-job-history/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/get-job-history/*.html" ]
+
+[functions.resolve-job]
+enabled = true
+verify_jwt = false
+import_map = "./functions/resolve-job/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/resolve-job/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/resolve-job/*.html" ]
+
+[functions.cancel-job]
+enabled = true
+verify_jwt = false
+import_map = "./functions/cancel-job/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/cancel-job/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/cancel-job/*.html" ]

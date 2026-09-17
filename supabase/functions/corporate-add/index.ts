@@ -3,7 +3,7 @@
 import { withSupabase } from 'npm:@supabase/server'
 
 export default {
-  fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
+  fetch: withSupabase({ auth: 'user'}, async (req, ctx) => {
 
     try {
     const { supabase, supabaseAdmin, userClaims, jwtClaims, authMode } = ctx
@@ -229,8 +229,11 @@ export default {
     })
   }
 
-
-
+  const { error: warm_error } = await supabaseAdmin.functions.invoke('corporate-minter', {
+  body: { user_id: ctx.userClaims.id, cordic_login_id },
+  });
+  if (warm_error) console.log("references warm-up failed: ", warm_error);
+  
       console.log("success")
       return new Response(JSON.stringify({ ok: true, msg: "Account Synced" }), {
         status: 200,
