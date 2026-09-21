@@ -1,6 +1,14 @@
-import {createClient} from "jsr:@supabase/supabase-js@2";
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
 
-Deno.serve(async (req) => {
+// Setup type definitions for built-in Supabase Runtime APIs
+import "@supabase/functions-js/edge-runtime.d.ts";
+import { withSupabase } from "@supabase/server";
+
+
+export default {
+  fetch: withSupabase({ auth: ["user"] }, async (req, ctx) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -14,19 +22,14 @@ try {
  console.log('_______________________');
 
   
-  const payload = await req.json()
-  const record = payload.record;
-  const record_id = record.id;
-  const p_user_id = record.user_id;
-  const loginID = record.cordic_login_id
+  const payload = await req.json();
+  const p_user_id = ctx.userClaims?.id;
+  const loginID = payload.cordic_login_id
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
 
+  
 // look up cordic_login_id from row, revealing account type for routing
-  const { data: qeuryLoginID , error: qeuryLoginID_error } = await supabase
+  const { data: qeuryLoginID , error: qeuryLoginID_error } = await ctx.supabase
   .from('cordic_logins')
   .select()
   .eq('id', loginID)
@@ -50,7 +53,7 @@ try {
   let bookingCapabilities;
 
   if (bookingType === "account") {
-    const {data: accountMint, error: accountMint_error } = await supabase.functions.invoke('corporate-minter', {
+    const {data: accountMint, error: accountMint_error } = await ctx.supabase.functions.invoke('corporate-minter', {
       body: {user_id: p_user_id , cordic_login_id: loginID}
     })
 
@@ -68,7 +71,7 @@ try {
 
   } else {
 
-  const {data: personalMint, error: personalMint_error} = await supabase.functions.invoke('personal-minter', {
+  const {data: personalMint, error: personalMint_error} = await ctx.supabase.functions.invoke('personal-minter', {
     body: {cordic_login_id: loginID, user_id: p_user_id},
   })
 
@@ -86,24 +89,19 @@ try {
   
 
 // booking details
-  const full_name = record.full_name;
-  const phone = record.phone;
-  const email = record.email;
-  const notes = record.note;
-  const vehicleType = record.vehicletype;
-  const status = record.status;
-  const created_at = record.created_at;
-  const booked_for = record.local_time;
-  const pickup = record.pickup;
-  const dropoff = record.dropoff;
-  const via = record.via;
-  const p_cordic_login_id = record.cordic_login_id;
-  const payment = record.payment;
+  const full_name = payload.full_name;
+  const phone = payload.phone;
+  const email = payload.email;
+  const vehicleTypes = payload.vehicletypes;
+  const booked_for = payload.local_time;
+  const pickup = payload.pickup;
+  const dropoff = payload.dropoff;
+  const via = payload.via;
+  const payment = payload.payment;
 
   // Account specific variables
-  const references = record?.references;
+  const references = payload?.references;
   const accUserID = qeuryLoginID?.cordic_user_id;
-  // const bookingCapabilities = accountMint?.bookingCapabilities;
 
 
   console.log("accUserID: ", accUserID);
@@ -114,9 +112,8 @@ let bookBody
 if (bookingType === "account") {
 
   bookBody = { 
-      book: true, 
+      book: false, 
       localTime: booked_for,
-      uuid: record_id,
       // account specific
       bookingCapabilities: bookingCapabilities,
       byAccUserID: accUserID,
@@ -141,22 +138,20 @@ if (bookingType === "account") {
         usedWhat3Words: dropoff.usedWhat3Words
       }, 
       via: via, 
-      vehicleType: vehicleType, 
+      vehicleTypes: vehicleTypes, 
       ringback: false, 
       textback: true, 
       verbVersion: 6.0, 
       quotedEtaMins: 0, 
-      quotedAvailMins: 0, 
-      notes: notes, 
+      quotedAvailMins: 0,
       waitReturn: false
     }
 
 } else {
  
   bookBody = { 
-      book: true, 
+      book: false, 
       localTime: booked_for,
-      uuid: record_id,
       payment: payment, 
       name: full_name, 
       phone: phone, 
@@ -176,13 +171,12 @@ if (bookingType === "account") {
         usedWhat3Words: dropoff.usedWhat3Words
       }, 
       via: via, 
-      vehicleType: vehicleType, 
+      vehicleTypes: vehicleTypes, 
       ringback: false, 
       textback: true, 
       verbVersion: 6.0, 
       quotedEtaMins: 0, 
       quotedAvailMins: 0, 
-      notes: notes, 
       waitReturn: false
     }
   };
@@ -202,7 +196,7 @@ if (bookingType === "account") {
   const cordicBookingResult = await cordicBooking?.json();
 
 
-
+/*
   if (cordicBookingResult.errorCode) {
 
    let { data: booked, error: booked_error } = await supabase
@@ -223,7 +217,7 @@ if (bookingType === "account") {
   });
      
   } else {
-    
+  
     let { data: booked, error: booked_error } = await supabase
     .from("bookings")
     .update({ 
@@ -239,12 +233,13 @@ if (bookingType === "account") {
     .single();
 
     console.log("MADE BOOKING: ", cordicBookingResult);
-    
-  }
-
   
-  console.log("Booking updated", { booked, booked_error});
-  return new Response(JSON.stringify({ok:true}), {
+  }
+  */
+  
+  console.log("Quoted", cordicBookingResult);
+  return new Response(JSON.stringify({ok:true, cordicBookingResult}), {
+    status: 200,
     headers: { "Content-Type": "application/json" },
   });
   
@@ -255,3 +250,4 @@ if (bookingType === "account") {
     });
  }
 })
+}
