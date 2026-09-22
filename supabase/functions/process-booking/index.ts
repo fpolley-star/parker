@@ -99,6 +99,27 @@ try {
   const via = record.via;
   const p_cordic_login_id = record.cordic_login_id;
   const payment = record.payment;
+  
+  // guest details
+  const for_guest = record.for_guest;
+  const guestDetails = record.guest || null
+
+  console.log('For Guest: ', for_guest)
+  console.log('Guest Detials: ', guestDetails)
+
+let paxFullName;
+let paxPhone;
+let paxEmail;
+
+  if (for_guest) {
+    paxFullName = guestDetails.first_name + ' ' + guestDetails.last_name;
+    paxPhone = guestDetails.phone;
+    paxEmail = guestDetails.email
+  } else {
+    paxFullName = full_name;
+    paxPhone = phone;
+    paxEmail: email
+  }
 
   // Account specific variables
   const references = record?.references;
@@ -123,9 +144,9 @@ if (bookingType === "account") {
       references: references,
       //account specific
       payment: payment, 
-      name: full_name, 
-      phone: phone, 
-      email: email, 
+      name: paxFullName, 
+      phone: paxPhone, 
+      email: paxEmail, 
       pickup: { 
         address: pickup.address,
         postcode: pickup.postcode, 
@@ -158,9 +179,9 @@ if (bookingType === "account") {
       localTime: booked_for,
       uuid: record_id,
       payment: payment, 
-      name: full_name, 
-      phone: phone, 
-      email: email, 
+      name: paxFullName, 
+      phone: paxPhone, 
+      email: paxEmail, 
       pickup: { 
         address: pickup.address,
         postcode: pickup.postcode, 
