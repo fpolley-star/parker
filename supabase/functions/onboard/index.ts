@@ -58,6 +58,7 @@ export default {
     console.log("taurusHello", taurusResult?.jwt)
 
 
+
 // try credentials against cordic
     const cordic_login_request_body = {
       "phase": 4,
@@ -136,6 +137,7 @@ export default {
     if (foundUser) {
       let cLogins
       // heal -> update password auth -> update personal vault secret -> return ok
+      //NEW adding a profiles look up to ensure that after a user signs up, onboard creates the profile row for them
 
       // use the email and type personal to ot query cordic logins
       // if we find a match // take that secret id // update vault secret with logged in passowrd
@@ -144,6 +146,8 @@ export default {
       // update auth.user with the new password
       
       // return ok
+
+
 
       let { data: updateUser, error: updateUser_error } = await supabaseAdmin.auth.admin.updateUserById( foundUser, { password: password })
 
@@ -154,21 +158,61 @@ export default {
            headers: {"Content-Type": "application/json"}
          })
        }
+       
+       
+       // IF a users singing up they wont of had a profile creates + vault secrets so we create the profile row here
+      let { data: checkProfile, error: checkProfile_error } = await supabaseAdmin
+          .from('profiles')
+          .select()
+          .eq('id', foundUser)
+          .maybeSingle()
 
-     let { data: queryCLogins, error: queryCLogins_error } = await supabaseAdmin
-        .from('cordic_logins')
-        .select()
-        .eq('username', email)
-        .eq('type', 'personal')
-        .maybeSingle()
+        if (checkProfile_error) {
+            console.log("FAILED TO CHECK PROFILES")
+            return new Response(JSON.stringify({error: "FAILED TO CHECK PROFILE ROW", details: checkProfile_error }), {
+            status: 500,
+            headers: {"Content-Type": "application/json"}
+          })
+        }
 
-      if (queryCLogins_error) {
-          console.log("FAILED TO QUERY USER LOGINS")
-          return new Response(JSON.stringify({error: "FAILED TO QUERY USER LOGINS ROW", details: queryCLogins_error }), {
-           status: 500,
-           headers: {"Content-Type": "application/json"}
-         })
-       }
+        if (!checkProfile) {
+          let { data: signUpProfile, error: signUpProfile_error } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+              id: foundUser, 
+              full_name: cLoginResponse.name, 
+              phone: cLoginResponse.canonPhone, 
+              cordic_user_id: cLoginResponse.userID, 
+              cordic_user_status: cLoginResponse.userStatus,
+            })
+
+          if (signUpProfile_error) {
+            console.log("FAILED TO CREATE SIGN UP USER PROFILE")
+            return new Response(JSON.stringify({error: "FAILED TO CREATE SIGN UP USER PROFILE", details: signUpProfile_error }), {
+              status: 500,
+              headers: {"Content-Type": "application/json"}
+            })
+          }
+        }
+
+
+
+
+
+      let { data: queryCLogins, error: queryCLogins_error } = await supabaseAdmin
+          .from('cordic_logins')
+          .select()
+          .eq('username', email)
+          .eq('type', 'personal')
+          .maybeSingle()
+
+        if (queryCLogins_error) {
+            console.log("FAILED TO QUERY USER LOGINS")
+            return new Response(JSON.stringify({error: "FAILED TO QUERY USER LOGINS ROW", details: queryCLogins_error }), {
+            status: 500,
+            headers: {"Content-Type": "application/json"}
+          })
+        }
 
        if (queryCLogins) {
         // most cases | match found - > update vault

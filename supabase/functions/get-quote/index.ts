@@ -11,14 +11,13 @@ export default {
   fetch: withSupabase({ auth: ["user"] }, async (req, ctx) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
+      status: 200,
       headers: {"Content-Type": "application/json"}
     })
   }
 
 try {
 
- console.log('_______________________');
  console.log('_______________________');
 
   
@@ -35,10 +34,12 @@ try {
   .eq('id', loginID)
   .single();
 
+
+
   if (qeuryLoginID_error) {
     console.log("Query Login Row Failed")
     return new Response(JSON.stringify({error: 'Query Login Row Failed', error_details: qeuryLoginID_error}), {
-      status: 500,
+      status: 200,
       headers: {"Content-Type": "applicaiton/json"}
     })
   }

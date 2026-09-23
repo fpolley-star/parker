@@ -118,7 +118,7 @@ let paxEmail;
   } else {
     paxFullName = full_name;
     paxPhone = phone;
-    paxEmail: email
+    paxEmail = email
   }
 
   // Account specific variables
