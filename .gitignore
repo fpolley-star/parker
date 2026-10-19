@@ -1,6 +1,7 @@
 # Supabase local dev
 supabase/.branches
 supabase/.temp
+supabase/functions/.env
 
 # Environment / secrets — never commit these
 .env

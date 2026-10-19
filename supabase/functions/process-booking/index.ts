@@ -8,22 +8,24 @@ Deno.serve(async (req) => {
     })
   }
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  const payload = await req.json()
+  const record = payload.record;
+  const record_id = record.id;
+
 try {
 
  console.log('_______________________');
  console.log('_______________________');
 
   
-  const payload = await req.json()
-  const record = payload.record;
-  const record_id = record.id;
   const p_user_id = record.user_id;
   const loginID = record.cordic_login_id
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
 
 // look up cordic_login_id from row, revealing account type for routing
   const { data: qeuryLoginID , error: qeuryLoginID_error } = await supabase
@@ -33,11 +35,8 @@ try {
   .single();
 
   if (qeuryLoginID_error) {
-    console.log("Query Login Row Failed")
-    return new Response(JSON.stringify({error: 'Query Login Row Failed', error_details: qeuryLoginID_error}), {
-      status: 500,
-      headers: {"Content-Type": "applicaiton/json"}
-    })
+    console.log("Query Login Row Failed", qeuryLoginID_error)
+    throw new Error( "QL: " + qeuryLoginID_error.message); 
   }
 
 
@@ -57,10 +56,7 @@ try {
     if (accountMint_error) {
       //should retry but error for now
       console.log("Unable to mint account token: ", accountMint_error);
-      return new Response(JSON.stringify({ error: "Unable to mint account token", details: accountMint_error }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      throw new Error( "A_MT: " + accountMint_error.message); 
     }
     console.log('Account Mint: ', accountMint);
     token = accountMint?.token;
@@ -74,17 +70,21 @@ try {
 
   if (personalMint_error) {
     console.log("Unable to mint personal token: ", personalMint_error);
-    return new Response(JSON.stringify({ error: "Unable to mint personal token", details: personalMint_error }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    throw new Error( "P_MT: " + personalMint_error.message); 
   } 
     token = personalMint?.token;
     console.log("Personal Token: ", token);
 
   }
-  
 
+
+  // should apply a retry mechanism here if token is not returned, but for now error
+  if (!token) {
+    console.log("No token returned from minter function");
+    throw new Error( "No token returned from minter function"); 
+  }
+  
+ console.log("isoTime: ", record.booked_for)
 // booking details
   const full_name = record.full_name;
   const phone = record.phone;
@@ -93,7 +93,7 @@ try {
   const vehicleType = record.vehicletype;
   const status = record.status;
   const created_at = record.created_at;
-  const booked_for = record.local_time;
+  const booked_for = record.booked_for;
   const pickup = record.pickup;
   const dropoff = record.dropoff;
   const via = record.via;
@@ -124,19 +124,18 @@ let paxEmail;
   // Account specific variables
   const references = record?.references;
   const accUserID = qeuryLoginID?.cordic_user_id;
-  // const bookingCapabilities = accountMint?.bookingCapabilities;
 
 
   console.log("accUserID: ", accUserID);
-  console.log("bookingCapabilities: ", bookingCapabilities);
 
 let bookBody
 
 if (bookingType === "account") {
+  console.log("bookingCapabilities: ", bookingCapabilities);
 
   bookBody = { 
       book: true, 
-      localTime: booked_for,
+      isoTime: record.booked_for,
       uuid: record_id,
       // account specific
       bookingCapabilities: bookingCapabilities,
@@ -176,7 +175,7 @@ if (bookingType === "account") {
  
   bookBody = { 
       book: true, 
-      localTime: booked_for,
+      isoTime: booked_for,
       uuid: record_id,
       payment: payment, 
       name: paxFullName, 
@@ -222,27 +221,20 @@ if (bookingType === "account") {
 
   const cordicBookingResult = await cordicBooking?.json();
 
+  if (!cordicBooking.ok) {
+    console.log("Cordic Booking Failed: ", cordicBookingResult.error, cordicBookingResult.errorCode);
+    throw new Error("Cordic Booking Failed: " + cordicBookingResult.error );
+  }
 
+  console.log("cordic_result: ", cordicBookingResult)
+
+  let booked;
+  let booked_error;
 
   if (cordicBookingResult.errorCode) {
-
-   let { data: booked, error: booked_error } = await supabase
-    .from("bookings")
-    .update({ 
-      status: "failed", 
-      error_msg: cordicBookingResult
-    })
-    .eq("id", record.id)
-    .select()
-    .single();
-
-
     console.log("FAILED BOOKING: ", cordicBookingResult);
-    return new Response(JSON.stringify({ok:false, error: cordicBookingResult}), {
-    status: 500,
-    headers: { "Content-Type": "application/json" },
-  });
-     
+    throw new Error( "Fail Book: " + cordicBookingResult.errorCode + " - " + cordicBookingResult.error); 
+    
   } else {
     
     let { data: booked, error: booked_error } = await supabase
@@ -259,18 +251,44 @@ if (bookingType === "account") {
     .select()
     .single();
 
+    if (booked_error) {
+      console.log("Failed to update successful booking: ", cordicBookingResult.jobID, booked_error);
+      // Should retry but log for now
+      return new Response(JSON.stringify({ok: false, jobID: cordicBookingResult.jobID}), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     console.log("MADE BOOKING: ", cordicBookingResult);
     
   }
 
   
-  console.log("Booking updated", { booked, booked_error});
-  return new Response(JSON.stringify({ok:true}), {
+  console.log("Booking updated");
+  return new Response(JSON.stringify({ok: true, jobID: cordicBookingResult.jobID}), {
     headers: { "Content-Type": "application/json" },
   });
   
  } catch (err) {
-    return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: err.message }), {
+    let { data: errorUpdate, error: errorUpdate_error } = await supabase
+    .from("bookings")
+    .update({ 
+      status: "failed", 
+      error_msg: err.message,
+    })
+    .eq("id", record.id)
+    .select()
+    .single();
+
+  if (errorUpdate_error) {
+    console.log("Failed to update booking error: ", errorUpdate_error);
+  } else {
+    console.log("Booking error updated", {errorUpdate, errorUpdate_error});
+  }
+    
+  console.log("Booking catched", "error: ", err);
+    return new Response(JSON.stringify({ error: "Caught Error", details: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });

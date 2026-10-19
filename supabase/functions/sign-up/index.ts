@@ -25,11 +25,12 @@ export default {
     const password = payload?.password;
 
     console.log("___________________");
+    console.log("Email: ", email, "Phone: ", phone, "First: ", firstName, "Last: ", lastName);
 
 
     if (!email || !password || !phone || !firstName || !lastName) {
       console.log("Incomplete body")
-      return new Response(JSON.stringify({ error: "Incomplete body"}), {
+      return new Response(JSON.stringify({ ok: false, error: "Incomplete body"}), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
@@ -51,7 +52,7 @@ export default {
     const taurusResult = await taurusHello?.json();
 
     if (taurusResult.errorCode) {
-      return new Response(JSON.stringify({ error: "Failed to say hello to cordic"}), {
+      return new Response(JSON.stringify({ ok: false, error: "Failed to say hello to cordic"}), {
         status: 500,
         headers: {"Content-Type": "application/json"}
       })
@@ -126,8 +127,8 @@ export default {
 
     if (createUser_error) {
       console.log("FAILED TO CREATE USER")
-      return new Response(JSON.stringify({error: "FAILED TO CREATE USER", details: createUser_error }), {
-        status: 500,
+      return new Response(JSON.stringify({ok: false, error: "FAILED TO CREATE USER", error: createUser_error }), {
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     };
@@ -144,8 +145,8 @@ export default {
 
     if (signUpProfile_error) {
       console.log("FAILED TO CREATE SIGN UP USER PROFILE")
-      return new Response(JSON.stringify({error: "FAILED TO CREATE SIGN UP USER PROFILE", details: signUpProfile_error }), {
-        status: 500,
+      return new Response(JSON.stringify({error: "FAILED TO CREATE SIGN UP USER PROFILE", error: signUpProfile_error }), {
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     }
@@ -168,8 +169,8 @@ export default {
 
         if (queryCLogins_error) {
             console.log("FAILED TO QUERY USER LOGINS")
-            return new Response(JSON.stringify({error: "FAILED TO QUERY USER LOGINS ROW", details: queryCLogins_error }), {
-            status: 500,
+            return new Response(JSON.stringify({ ok: false, error: "FAILED TO QUERY USER LOGINS ROW", error: queryCLogins_error }), {
+            status: 200,
             headers: {"Content-Type": "application/json"}
           })
         }
@@ -180,8 +181,8 @@ export default {
 
           if (updatePassword_error) {
             console.log("FAILED TO CREATE VAULT SECRET")
-            return new Response(JSON.stringify({error: "FAILED TO CREATE VAULT SECRET", details: updatePassword_error }), {
-              status: 500,
+            return new Response(JSON.stringify({ ok: false, error: "FAILED TO CREATE VAULT SECRET", error: updatePassword_error }), {
+              status: 200,
               headers: {"Content-Type": "application/json"}
             })
           }
@@ -202,8 +203,8 @@ export default {
 
           if (newSecretId_error) {
             console.log("FAILED TO CREATE VAULT SECRET")
-            return new Response(JSON.stringify({error: "FAILED TO CREATE VAULT SECRET", details: newSecretId_error }), {
-              status: 500,
+            return new Response(JSON.stringify({ ok: false, error: "FAILED TO CREATE VAULT SECRET", error: newSecretId_error }), {
+              status: 200,
               headers: {"Content-Type": "application/json"}
             })
           }
@@ -218,8 +219,8 @@ export default {
 
             if (cLoginsInsert_error) {
               console.log("FAILED TO CREATE USER LOGIN ROW")
-              return new Response(JSON.stringify({error: "FAILED TO ADD LOGIN ROW", details: cLoginsInsert_error }), {
-               status: 500,
+              return new Response(JSON.stringify({ ok: false, error: "FAILED TO ADD LOGIN ROW", error: cLoginsInsert_error }), {
+               status: 200,
                headers: {"Content-Type": "application/json"}
             })
           }
@@ -235,7 +236,7 @@ export default {
 
       if (cMemberships_error) {
         console.log("FAILED TO CREATE MEMBERSHIP ROW")
-        return new Response(JSON.stringify({error: "FAILED TO CREATE MEMBERSHIP ROW", details: cMemberships_error }), {
+        return new Response(JSON.stringify({ ok: false, error: "FAILED TO CREATE MEMBERSHIP ROW", error: cMemberships_error }), {
           status: 500,
           headers: {"Content-Type": "application/json"}
         })
@@ -251,7 +252,7 @@ export default {
 
   return new Response(JSON.stringify({ ok: true, Details: 'No Action' }))
     } catch (err) {
-    return new Response(JSON.stringify({ error: "Malformed JSON or server error", details: err.message }), {
+    return new Response(JSON.stringify({ ok: false, error: "Malformed JSON or server error", details: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     })}

@@ -74,6 +74,8 @@ const supabase = createClient(
         headers: { "Content-Type": "application/json" },
       });
     }
+    
+    console.log("decrypted password: ", decrypted_password)
 
     const cordic_identifier = cordic_login.username;
     const cordic_password = decrypted_password

@@ -22,8 +22,7 @@ export default {
     const date = Date.now().toString();
 
     console.log("___________________");
-    console.log("___________________");
-    console.log("___________________");
+
 
     if (!value || !password) {
       console.log("value or password missing")
@@ -34,7 +33,7 @@ export default {
     }
 
 
-    const acc_array = ['CRE0001', 'CASH011', 'DEBI0001'];
+    const acc_array = ['', '', ''];
 
 
 
@@ -101,8 +100,8 @@ export default {
 
     const parkerCordicBody = {
       "verbVersion": "1.0",
-      "clientGUID" : "38ee69ba-9e63-4286-997f-1a1f664fc6b5",
-      "password" : "asdfg145!",
+      "clientGUID" : "",
+      "password" : "",
       "appVersion" : "1.0"
     };
 

@@ -62,7 +62,7 @@ try {
       //should retry but error for now
       console.log("Unable to mint account token: ", accountMint_error);
       return new Response(JSON.stringify({ error: "Unable to mint account token", details: accountMint_error }), {
-        status: 500,
+        status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -79,7 +79,7 @@ try {
   if (personalMint_error) {
     console.log("Unable to mint personal token: ", personalMint_error);
     return new Response(JSON.stringify({ error: "Unable to mint personal token", details: personalMint_error }), {
-      status: 500,
+      status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } 
@@ -94,6 +94,7 @@ try {
   const phone = payload.phone;
   const email = payload.email;
   const vehicleTypes = payload.vehicletypes;
+  const vehicleType = payload.vehicletype;
   const booked_for = payload.local_time;
   const pickup = payload.pickup;
   const dropoff = payload.dropoff;
@@ -107,6 +108,12 @@ try {
 
   console.log("accUserID: ", accUserID);
   console.log("bookingCapabilities: ", bookingCapabilities);
+  console.log("vehicleType: ", payload.vehicletype);
+  console.log("vehicleTypes: ", payload.vehicletypes);
+
+  let quoteFor = vehicleType ? {vehicleType} : {vehicleTypes};
+
+  console.log("quoteFor: ", quoteFor);
 
 let bookBody
 
@@ -114,7 +121,7 @@ if (bookingType === "account") {
 
   bookBody = { 
       book: false, 
-      localTime: booked_for,
+      isoTime: booked_for,
       // account specific
       bookingCapabilities: bookingCapabilities,
       byAccUserID: accUserID,
@@ -139,7 +146,7 @@ if (bookingType === "account") {
         usedWhat3Words: dropoff.usedWhat3Words
       }, 
       via: via, 
-      vehicleTypes: vehicleTypes, 
+      ...quoteFor,
       ringback: false, 
       textback: true, 
       verbVersion: 6.0, 
@@ -152,7 +159,7 @@ if (bookingType === "account") {
  
   bookBody = { 
       book: false, 
-      localTime: booked_for,
+      isoTime: booked_for,
       payment: payment, 
       name: full_name, 
       phone: phone, 
@@ -172,7 +179,7 @@ if (bookingType === "account") {
         usedWhat3Words: dropoff.usedWhat3Words
       }, 
       via: via, 
-      vehicleTypes: vehicleTypes, 
+      ...quoteFor,
       ringback: false, 
       textback: true, 
       verbVersion: 6.0, 
@@ -194,49 +201,9 @@ if (bookingType === "account") {
     body: JSON.stringify(bookBody)
   });
 
-  const cordicBookingResult = await cordicBooking?.json();
+  const cordicBookingResult = vehicleType ?  {quotes: [ await cordicBooking?.json()]} : await cordicBooking?.json();
 
-
-/*
-  if (cordicBookingResult.errorCode) {
-
-   let { data: booked, error: booked_error } = await supabase
-    .from("bookings")
-    .update({ 
-      status: "failed", 
-      error_msg: cordicBookingResult
-    })
-    .eq("id", record.id)
-    .select()
-    .single();
-
-
-    console.log("FAILED BOOKING: ", cordicBookingResult);
-    return new Response(JSON.stringify({ok:false, error: cordicBookingResult}), {
-    status: 500,
-    headers: { "Content-Type": "application/json" },
-  });
-     
-  } else {
   
-    let { data: booked, error: booked_error } = await supabase
-    .from("bookings")
-    .update({ 
-      status: "booked", 
-      cordic_job_id: cordicBookingResult.jobID,
-      review: cordicBookingResult.review,
-      base_price: cordicBookingResult.basePrice,
-      price: cordicBookingResult.price,
-      priceavailable: cordicBookingResult.priceAvailable,
-    })
-    .eq("id", record.id)
-    .select()
-    .single();
-
-    console.log("MADE BOOKING: ", cordicBookingResult);
-  
-  }
-  */
   
   console.log("Quoted", cordicBookingResult);
   return new Response(JSON.stringify({ok:true, cordicBookingResult}), {

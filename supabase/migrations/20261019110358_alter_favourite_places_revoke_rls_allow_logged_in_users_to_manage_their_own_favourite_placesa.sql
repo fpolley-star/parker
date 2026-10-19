@@ -1,0 +1,1 @@
+drop policy "Allow logged in users to manage their own favourite places" on public.favourite_places;

@@ -27,7 +27,7 @@ export default {
     if (!email || !password) {
       console.log("Email or password missing")
       return new Response(JSON.stringify({ error: "Email or password missing"}), {
-        status: 400,
+        status: 200,
         headers: { "Content-Type": "application/json" },
       })
     }
@@ -49,7 +49,7 @@ export default {
 
     if (taurusResult.errorCode) {
       return new Response(JSON.stringify({ error: "Failed to say hello to cordic"}), {
-        status: 500,
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     };
@@ -80,36 +80,36 @@ export default {
 
     if (cLoginResponse.registerError === 9) {
       console.log("9 | Should sign up | User doesnt exist")
-      return new Response(JSON.stringify({ error: "Unknown User, should sign up", details: cLoginResponse }), {
-        status: 404,
+      return new Response(JSON.stringify({ error: "No user found", details: cLoginResponse }), {
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     }
     if (cLoginResponse.registerError === 10) {
       console.log("10 | Max Password Attempts | User Exists")
-      return new Response(JSON.stringify({ error: "Invalid Login Password | User Exists", details: cLoginResponse }), {
-        status: 401,
+      return new Response(JSON.stringify({ error: "Max Password Attempts", details: cLoginResponse }), {
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     }
     if (cLoginResponse.registerError === 11) {
       console.log("11 | Invalid Login Password | User Exists")
-      return new Response(JSON.stringify({ error: "Invalid Login Password | User Exists", details: cLoginResponse }), {
-        status: 401,
+      return new Response(JSON.stringify({ error: "Invalid Login Password", details: cLoginResponse }), {
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     }
     if (cLoginResponse.registerError === 13) {
       console.log("13 | Locked for | User exist")
-      return new Response(JSON.stringify({ error: "Locked for | User doesnt exist", details: cLoginResponse }), {
-        status: 423,
+      return new Response(JSON.stringify({ error: "Locked for " + cLoginResponse.lockedMins + " mins", details: cLoginResponse }), {
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     }
     if (cLoginResponse.registerError !== 1) {
       console.log("LOGIN ERROR OCCURRED")
-      return new Response(JSON.stringify({ error: "LOGIN ERROR OCCURRED", details: cLoginResponse }), {
-        status: 500,
+      return new Response(JSON.stringify({ error: "Login error, try again later", details: cLoginResponse }), {
+        status: 200,
         headers: {"Content-Type": "application/json"}
       })
     }
