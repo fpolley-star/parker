@@ -564,3 +564,14 @@ entrypoint = "./functions/forgot-password/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/forgot-password/*.html" ]
+
+[functions.edit-profile]
+enabled = true
+verify_jwt = false
+import_map = "./functions/edit-profile/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/edit-profile/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/edit-profile/*.html" ]
